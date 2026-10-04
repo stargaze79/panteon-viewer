@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Panteon 3D</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101214;font-family:system-ui,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+#loading{position:fixed;inset:0;display:grid;place-items:center;background:#101214;color:#fff;z-index:10}
+#loading div{text-align:center} #bar{width:min(70vw,360px);height:5px;background:#333;border-radius:4px;overflow:hidden;margin-top:12px}
+#fill{height:100%;width:0;background:#ddd;transition:width .1s}
+#ui{position:fixed;right:12px;top:12px;display:flex;gap:8px;z-index:5}
+button{border:0;border-radius:10px;padding:10px 13px;background:rgba(20,20,20,.72);color:#fff;font-size:14px;backdrop-filter:blur(8px)}
+#hint{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);color:#fff;background:rgba(20,20,20,.65);padding:7px 11px;border-radius:10px;font-size:12px;white-space:nowrap;z-index:5;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="loading"><div>Loading Panteon…<div id="bar"><div id="fill"></div></div></div></div>
+<div id="ui"><button id="home">Reset</button><button id="top">Top</button><button id="full">Fullscreen</button></div>
+<div id="hint">1 finger orbit · 2 fingers pan/zoom · double-tap to focus</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x101214);
+
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.02,5000);
+// This WebODM export is Z-up, so keep its native mapping rather than tipping the mesh.
+camera.up.set(0,0,1);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=.08;
+controls.screenSpacePanning=false;
+controls.minPolarAngle=.025;
+controls.maxPolarAngle=Math.PI/2-.015; // stay above the reconstructed ground
+controls.zoomToCursor=true;
+controls.touches.ONE=THREE.TOUCH.ROTATE;
+controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x555555,2.0));
+const sun=new THREE.DirectionalLight(0xffffff,2.0); sun.position.set(20,-30,50); scene.add(sun);
+
+let model, homePos=new THREE.Vector3(), homeTarget=new THREE.Vector3();
+const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
+
+function frameObject(obj){
+ const box=new THREE.Box3().setFromObject(obj), sphere=box.getBoundingSphere(new THREE.Sphere());
+ const r=Math.max(sphere.radius,1);
+ controls.target.copy(sphere.center);
+ camera.position.set(sphere.center.x+r*.95,sphere.center.y-r*1.25,sphere.center.z+r*.9);
+ camera.near=Math.max(r/5000,.01); camera.far=r*100; camera.updateProjectionMatrix();
+ controls.minDistance=r*.015; controls.maxDistance=r*12;
+ controls.update();
+ homePos.copy(camera.position); homeTarget.copy(controls.target);
+}
+new GLTFLoader().load('Panteon_Sketchfab_centered.glb',g=>{
+ model=g.scene; scene.add(model); frameObject(model);
+ document.getElementById('loading').style.display='none';
+},e=>{
+ if(e.total) document.getElementById('fill').style.width=(100*e.loaded/e.total).toFixed(0)+'%';
+},err=>{
+ document.getElementById('loading').innerHTML='<div>Could not load the model.<br><small>Make sure Panteon_Sketchfab_centered.glb is in this repository.</small></div>';
+ console.error(err);
+});
+
+function focusAt(clientX,clientY){
+ if(!model)return;
+ const rect=renderer.domElement.getBoundingClientRect();
+ pointer.x=((clientX-rect.left)/rect.width)*2-1;
+ pointer.y=-((clientY-rect.top)/rect.height)*2+1;
+ raycaster.setFromCamera(pointer,camera);
+ const hit=raycaster.intersectObject(model,true)[0];
+ if(hit){controls.target.copy(hit.point);controls.update();}
+}
+renderer.domElement.addEventListener('dblclick',e=>focusAt(e.clientX,e.clientY));
+let lastTap=0,lastX=0,lastY=0;
+renderer.domElement.addEventListener('touchend',e=>{
+ if(e.changedTouches.length!==1)return;
+ const t=Date.now(),p=e.changedTouches[0];
+ if(t-lastTap<330 && Math.hypot(p.clientX-lastX,p.clientY-lastY)<35) focusAt(p.clientX,p.clientY);
+ lastTap=t;lastX=p.clientX;lastY=p.clientY;
+},{passive:true});
+
+document.getElementById('home').onclick=()=>{camera.position.copy(homePos);controls.target.copy(homeTarget);controls.update();};
+document.getElementById('top').onclick=()=>{
+ if(!model)return;
+ const box=new THREE.Box3().setFromObject(model),s=box.getBoundingSphere(new THREE.Sphere());
+ controls.target.copy(s.center); camera.position.set(s.center.x,s.center.y,s.center.z+s.radius*2.2); camera.up.set(0,1,0); camera.lookAt(s.center); camera.up.set(0,0,1); controls.update();
+};
+document.getElementById('full').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+</script>
+</body></html>
