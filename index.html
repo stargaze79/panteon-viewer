@@ -37,7 +37,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=2.0;
+renderer.toneMappingExposure=1.5;
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -70,13 +70,21 @@ function frameObject(obj){
 }
 new GLTFLoader().load('Panteon_Sketchfab_centered.glb',g=>{
  model=g.scene;
- // Photogrammetry textures already contain their real-world illumination. Render them
- // unlit so Three.js does not multiply those baked shadows by another lighting pass.
+ // Preserve the GLB's original materials. The textures already contain much of the
+ // scene illumination, so make the PBR materials effectively unlit without replacing
+ // them (replacement can break GLB material/texture handling on some browsers).
  model.traverse(o=>{
-   if(o.isMesh && o.material){
-     const mats=Array.isArray(o.material)?o.material:[o.material];
-     o.material=mats.map(m=>new THREE.MeshBasicMaterial({map:m.map||null,color:0xffffff,transparent:m.transparent,opacity:m.opacity,side:m.side}));
-     if(!Array.isArray(mats) && o.material.length===1) o.material=o.material[0];
+   if(!o.isMesh || !o.material) return;
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   for(const m of mats){
+     if('emissive' in m){
+       m.emissive.set(0xffffff);
+       m.emissiveMap=m.map || null;
+       m.emissiveIntensity=1.0;
+     }
+     if('roughness' in m) m.roughness=1;
+     if('metalness' in m) m.metalness=0;
+     m.needsUpdate=true;
    }
  });
  scene.add(model); frameObject(model);
