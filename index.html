@@ -36,8 +36,8 @@ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-per
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.5;
+renderer.toneMapping=THREE.NoToneMapping;
+renderer.toneMappingExposure=1.0;
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -51,9 +51,9 @@ controls.touches.ONE=THREE.TOUCH.ROTATE;
 controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
 
 // Soft, broad illumination suits baked photogrammetry textures better than strong contrast.
-scene.add(new THREE.HemisphereLight(0xffffff,0xb8c0c8,3.2));
-const ambient=new THREE.AmbientLight(0xffffff,1.15); scene.add(ambient);
-const sun=new THREE.DirectionalLight(0xffffff,1.15); sun.position.set(20,-30,50); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xffffff,0x777777,1.35));
+const ambient=new THREE.AmbientLight(0xffffff,0.45); scene.add(ambient);
+const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(20,-30,50); scene.add(sun);
 
 let model, homePos=new THREE.Vector3(), homeTarget=new THREE.Vector3();
 const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
@@ -70,23 +70,7 @@ function frameObject(obj){
 }
 new GLTFLoader().load('Panteon_Sketchfab_centered.glb',g=>{
  model=g.scene;
- // Preserve the GLB's original materials. The textures already contain much of the
- // scene illumination, so make the PBR materials effectively unlit without replacing
- // them (replacement can break GLB material/texture handling on some browsers).
- model.traverse(o=>{
-   if(!o.isMesh || !o.material) return;
-   const mats=Array.isArray(o.material)?o.material:[o.material];
-   for(const m of mats){
-     if('emissive' in m){
-       m.emissive.set(0xffffff);
-       m.emissiveMap=m.map || null;
-       m.emissiveIntensity=1.0;
-     }
-     if('roughness' in m) m.roughness=1;
-     if('metalness' in m) m.metalness=0;
-     m.needsUpdate=true;
-   }
- });
+ // Keep the GLB materials exactly as exported; WebODM's appearance is our reference.
  scene.add(model); frameObject(model);
  document.getElementById('loading').style.display='none';
 },e=>{
