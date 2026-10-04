@@ -39,7 +39,7 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.NoToneMapping;
 renderer.toneMappingExposure=1.0;
 // Display-only tonal lift. Brightens midtones/shadows without changing the GLB or scene lighting.
-renderer.domElement.style.filter='brightness(2.0) contrast(0.78)';
+renderer.domElement.style.filter='brightness(1.85) contrast(0.92) saturate(1.18)';
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -108,7 +108,17 @@ document.getElementById('top').onclick=()=>{
 };
 document.getElementById('full').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);rt.setSize(innerWidth,innerHeight);});
+// Lift only the deepest tones after rendering, rather than flattening the whole image.
+const liftShadows=new THREE.ShaderMaterial({
+  uniforms:{tDiffuse:{value:null}},
+  vertexShader:`varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`,
+  fragmentShader:`uniform sampler2D tDiffuse; varying vec2 vUv; void main(){vec4 c=texture2D(tDiffuse,vUv); float y=dot(c.rgb,vec3(.2126,.7152,.0722)); float m=1.0-smoothstep(.08,.38,y); c.rgb += vec3(.13)*m; gl_FragColor=c;}`,
+  depthTest:false,depthWrite:false
+});
+const rt=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{type:THREE.UnsignedByteType});
+const postScene=new THREE.Scene(); const postCamera=new THREE.Camera();
+const postQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),liftShadows); postScene.add(postQuad);
+renderer.setAnimationLoop(()=>{controls.update();renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);liftShadows.uniforms.tDiffuse.value=rt.texture;renderer.render(postScene,postCamera);});
 </script>
 </body></html>
