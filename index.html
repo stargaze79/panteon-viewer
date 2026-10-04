@@ -37,7 +37,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.35;
+renderer.toneMappingExposure=2.0;
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -69,7 +69,17 @@ function frameObject(obj){
  homePos.copy(camera.position); homeTarget.copy(controls.target);
 }
 new GLTFLoader().load('Panteon_Sketchfab_centered.glb',g=>{
- model=g.scene; scene.add(model); frameObject(model);
+ model=g.scene;
+ // Photogrammetry textures already contain their real-world illumination. Render them
+ // unlit so Three.js does not multiply those baked shadows by another lighting pass.
+ model.traverse(o=>{
+   if(o.isMesh && o.material){
+     const mats=Array.isArray(o.material)?o.material:[o.material];
+     o.material=mats.map(m=>new THREE.MeshBasicMaterial({map:m.map||null,color:0xffffff,transparent:m.transparent,opacity:m.opacity,side:m.side}));
+     if(!Array.isArray(mats) && o.material.length===1) o.material=o.material[0];
+   }
+ });
+ scene.add(model); frameObject(model);
  document.getElementById('loading').style.display='none';
 },e=>{
  if(e.total) document.getElementById('fill').style.width=(100*e.loaded/e.total).toFixed(0)+'%';
