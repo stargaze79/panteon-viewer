@@ -39,7 +39,7 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.NoToneMapping;
 renderer.toneMappingExposure=1.0;
 // Display-only tonal lift. Brightens midtones/shadows without changing the GLB or scene lighting.
-renderer.domElement.style.filter='brightness(2.0) contrast(0.78)';
+renderer.domElement.style.filter='none';
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
