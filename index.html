@@ -39,7 +39,7 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.NoToneMapping;
 renderer.toneMappingExposure=1.0;
 // Display-only tonal lift. Brightens midtones/shadows without changing the GLB or scene lighting.
-renderer.domElement.style.filter='brightness(1.85) contrast(0.92) saturate(1.18)';
+renderer.domElement.style.filter='brightness(2.0) contrast(0.78)';
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -108,7 +108,7 @@ document.getElementById('top').onclick=()=>{
 };
 document.getElementById('full').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);rt.setSize(innerWidth,innerHeight);});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 // Lift only the deepest tones after rendering, rather than flattening the whole image.
 const liftShadows=new THREE.ShaderMaterial({
   uniforms:{tDiffuse:{value:null}},
