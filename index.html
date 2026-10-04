@@ -37,7 +37,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.0;
+renderer.toneMappingExposure=1.35;
 document.body.prepend(renderer.domElement);
 
 const controls=new OrbitControls(camera,renderer.domElement);
@@ -51,9 +51,9 @@ controls.touches.ONE=THREE.TOUCH.ROTATE;
 controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
 
 // Soft, broad illumination suits baked photogrammetry textures better than strong contrast.
-scene.add(new THREE.HemisphereLight(0xffffff,0x999999,2.1));
-const ambient=new THREE.AmbientLight(0xffffff,0.8); scene.add(ambient);
-const sun=new THREE.DirectionalLight(0xffffff,0.65); sun.position.set(20,-30,50); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xffffff,0xcccccc,4.0));
+const ambient=new THREE.AmbientLight(0xffffff,2.0); scene.add(ambient);
+const sun=new THREE.DirectionalLight(0xffffff,0.35); sun.position.set(20,-30,50); scene.add(sun);
 
 let model, homePos=new THREE.Vector3(), homeTarget=new THREE.Vector3();
 const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
